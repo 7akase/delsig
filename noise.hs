@@ -21,8 +21,8 @@ log10 :: Floating a => a -> a
 log10 x = log x / log 10 
 
 db10 :: Floating a => a -> a
-db10 = (10 *) . log
+db10 = (10 *) . log10
 
 db20 :: Floating a => a -> a
-db20 = (20 *) . log
+db20 = (20 *) . log10
 
