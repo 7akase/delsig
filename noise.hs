@@ -13,6 +13,9 @@ delta = 1.0
 sigJitter = 1e-12
 sigNTF = 1/100
 
+snrApertureJitter = 1 / (2 * pi * fb * sigJitter) ** 2
+
+
 ibjn1 = 2 * pi * (vsig * fb * sigJitter) ** 2 / osr
 
 ibjn2 = osr * (fb * delta * sigNTF * sigJitter) ** 2 / 3
