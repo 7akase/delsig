@@ -26,17 +26,17 @@ class Timer:
         def isInRange(self, a, b, t):
                 tt = mod(t, self.ts)
                 if tt >= a and tt < b:
-                        True
+                        return True
                 else:
-                        False
+                        return False
         
         def isPosedge(self, t):
                 if int(t / self.ts) > self.clk_count:
                         self.clk_count = int(t / self.ts)
                         self.prev_time = t
-                        True
+                        return True
                 else:
-                        False
+                        return False
 
 
 def U(t):
@@ -96,7 +96,7 @@ def updateState(x, t, p0, z0):
                 v_next = (1 if x[y] > 0 else -1)
 
                 fb_prev = fb_next
-                fb_next = -v_prev # negative feedback
+                fb_next = v_prev
 
                 dac_prev = dac_next
                 dac_next = step_dac * fb_next
@@ -118,9 +118,9 @@ def updateState(x, t, p0, z0):
                 dac_now = 0.0 # return to zero
         
         # update state
-        s[v]   = (v_now   - x[v]  ) / trf_comp
-        s[fb]  = (fb_now  - x[fb] ) / trf_dac
-        s[dac] = (dac_now - x[dac]) / trf_dac
+        s[v]   = (v_now   - x[v]  ) / dt 
+        s[fb]  = (fb_now  - x[fb] ) / dt 
+        s[dac] = (dac_now - x[dac]) / dt 
         s[u]   = (U(t)    - x[u]  ) / dt
         s[y]   = (-x[y] + (x[u] - x[fb])  + (s[u] + s[fb])/z0) * p0 # deriv eq
         
