@@ -1,3 +1,4 @@
+import enum
 from numpy import *
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -14,10 +15,31 @@ trf_comp = 1e-8
 trf_dac = 1e-8
 
 dt = 1e-8
-t = arange(0, ts*osr*2, dt)
+t = arange(0, ts*osr*5, dt)
+
+class Timer:
+        def __init__(self, ts):
+                self.ts = ts 
+                self.clk_count = 0
+                self.prev_time = 0.0
+
+        def isInRange(self, a, b, t):
+                tt = mod(t, self.ts)
+                if tt >= a and tt < b:
+                        True
+                else:
+                        False
+        
+        def isPosedge(self, t):
+                if int(t / self.ts) > self.clk_count:
+                        self.clk_count = int(t / self.ts)
+                        self.prev_time = t
+                        True
+                else:
+                        False
 
 
-def next_u(t):
+def U(t):
         fsig = fs / 2 / osr # [Hz]
         w = 2*pi*fsig # [rad/sec]
         a = step_dac / ts / w # [V] w*A*Ts < step_dac
@@ -37,46 +59,80 @@ def isClock(t):
         else:
                 return False
 
-v_now = -1
+def mod_ts(t):
+        global clk_count
+        global ts
+        clk_count += 1 if t > ts * clk_count else 0 
+        return t / ts - (clk_count - 1)
+
+v_next = -1
 v_prev = -1
-fb_now = 0
+fb_next = 0
 fb_prev = 0
-def foo(x, t, p0, z0):
-        global v_now, v_prev
-        global fb_now, fb_prev
+dac_next = 0.0
+dac_prev = 0.0
+time = Timer(ts)
+def updateState(x, t, p0, z0):
+        global v_next, v_prev
+        global fb_next, fb_prev
+        global dac_next, dac_prev
+        global timer
         # index definition
         u = 0
         y = 1
         v = 2
         fb = 3
+        dac = 4
         # number of signals 
-        s = zeros(4)
+        s = zeros(5)
+        
+
+        alpha = 0.0
+        beta = 1.0
         
         # comparator
-        if isClock(t):
-                v_prev = v_now
-                v_now  = (1 if x[y] > 0 else -1)
+        if time.isPosedge(t):
+                v_prev = v_next
+                v_next = (1 if x[y] > 0 else -1)
 
-                fb_prev = fb_now
-                fb_now = v_now + (fb_prev + v_now)
+                fb_prev = fb_next
+                fb_next = -v_prev # negative feedback
+
+                dac_prev = dac_next
+                dac_next = step_dac * fb_next
         else:
                 pass
-        s[v] = (v_now - x[v]) / trf_comp
         
-        
-        # DAC output
-        s[fb] = -step_dac * v_now / trf_dac # negative feedback
+        # comparator
+        v_now = v_next
 
+        # feedback filter
+        fb_now = fb_next # 
+
+        # RZ-DAC response
+        if time.isInRange(0.0, alpha, t):
+                dac_now = 0.0 # start from zero
+        elif time.isInRange(alpha, beta, t):
+                dac_now = dac_next
+        else:
+                dac_now = 0.0 # return to zero
+        
+        # update state
+        s[v]   = (v_now   - x[v]  ) / trf_comp
+        s[fb]  = (fb_now  - x[fb] ) / trf_dac
+        s[dac] = (dac_now - x[dac]) / trf_dac
+        s[u]   = (U(t)    - x[u]  ) / dt
+        s[y]   = (-x[y] + (x[u] - x[fb])  + (s[u] + s[fb])/z0) * p0 # deriv eq
+        
         # differential equation
         # y = (1 + s/z0) / (1 + s/p0) * u
         # -> (1 + s/p0) * Y = (1 + s/z0) * u
         # -> s*y = (-y + (1 + s/z0)u) * p0
         # -> s*y = (-y + u + s*u/z0) * p0
-        s[u]  = (next_u(t) - x[u]) / dt
-        s[y]  = (-x[y] + (x[u] + x[fb])  + (s[u] + s[fb])/z0) * p0
+        ## s[u]  = (U(t) - x[u]) / dt
         return  s
 
-vv = odeint(foo, zeros(4), t, args=(p0, z0))
+vv = odeint(updateState, zeros(5), t, args=(p0, z0))
 fig, (sp1, sp2) = plt.subplots(nrows=2, figsize=(10,7))
 sp1.plot(t, vv[:,0], label = "U")
 sp2.plot(t, vv[:,1], label = "Y")
