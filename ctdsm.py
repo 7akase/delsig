@@ -1,4 +1,3 @@
-import enum
 from numpy import *
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -72,7 +71,8 @@ fb_prev = 0
 dac_next = 0.0
 dac_prev = 0.0
 time = Timer(ts)
-def updateState(x, t, p0, z0):
+def updateState(x, t, t_start, p0, z0):
+        # t_start : start time to calculate U(t)
         global v_next, v_prev
         global fb_next, fb_prev
         global dac_next, dac_prev
@@ -118,10 +118,10 @@ def updateState(x, t, p0, z0):
                 dac_now = 0.0 # return to zero
         
         # update state
-        s[v]   = (v_now   - x[v]  ) / dt 
-        s[fb]  = (fb_now  - x[fb] ) / dt 
-        s[dac] = (dac_now - x[dac]) / dt 
-        s[u]   = (U(t)    - x[u]  ) / dt
+        s[v]   = (v_now        - x[v]  ) / dt 
+        s[fb]  = (fb_now       - x[fb] ) / dt 
+        s[dac] = (dac_now      - x[dac]) / dt 
+        s[u]   = (U(t+t_start) - x[u]  ) / dt
         s[y]   = (-x[y] + (x[u] - x[fb])  + (s[u] + s[fb])/z0) * p0 # deriv eq
         
         # differential equation
@@ -132,12 +132,40 @@ def updateState(x, t, p0, z0):
         ## s[u]  = (U(t) - x[u]) / dt
         return  s
 
-vv = odeint(updateState, zeros(5), t, args=(p0, z0))
+def runClock(dut, t_start, init_cond):
+        global ts, dt
+        global p0, z0
+        t = arange(0, ts, dt)
+        ret = odeint(dut, init_cond, t, args=(t_start, p0, z0))
+        return (t, ret)
+
+t = []
+u = []
+y = []
+v = []
+fb = []
+state = zeros((1,5))
+t_start = 0
+for i in range(0, osr*5):
+        t_start += tt[-1] + dt
+        time.clk_count = 0
+        tt, state = runClock(updateState, t_start, state[-1,:])
+        t.extend(map(lambda x: x + t_start, tt))
+        u.extend(state[:,0])
+        y.extend(state[:,1])
+        v.extend(state[:,2])
+        fb.extend(state[:,3])
+
+# vv = odeint(updateState, zeros(5), t, args=(p0, z0))
 fig, (sp1, sp2) = plt.subplots(nrows=2, figsize=(10,7))
-sp1.plot(t, vv[:,0], label = "U")
-sp2.plot(t, vv[:,1], label = "Y")
-sp2.plot(t, vv[:,2], label = "V")
-sp1.plot(t, vv[:,3], label = "FB")
+sp1.plot(t, u,  label = "U" )
+sp2.plot(t, y,  label = "Y" )
+sp2.plot(t, v,  label = "V" )
+sp1.plot(t, fb, label = "FB")
+# sp1.plot(t, vv[:,0], label = "U")
+# sp2.plot(t, vv[:,1], label = "Y")
+# sp2.plot(t, vv[:,2], label = "V")
+# sp1.plot(t, vv[:,3], label = "FB")
 sp1.legend()
 sp2.legend()
 plt.show()
