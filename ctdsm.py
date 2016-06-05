@@ -17,7 +17,7 @@ t_ab = 0.9 * ts # RZ DAC
 t_ba = 0.1 * ts # RZ DAC
 t_ab = 1.0 * ts # NRZ DAC
 t_ba = 0.0 * ts # NRZ DAC
-sig_jit = 0.002 * ts * 1e-10
+sig_jit = 0.01 * ts
 
 # simulation parameter
 dt = 1e-8
@@ -82,12 +82,12 @@ def runClock(dut, t_start, init_cond):
 
         alpha = random.normal(0, sig_jit)
         beta  = random.normal(0, sig_jit)
-        
+        print (alpha, beta) 
         t1 = arange(0, t_ab + alpha, dt)
         t2 = arange(0, t_ba + beta,  dt)
 
-        # concatenate((t1, [t_ab + alpha])) # 0 ~ t_ab + jitter
-        # concatenate((t2, [t_ba + beta ])) # 0 ~ t_ba + jitter
+        concatenate((t1, [t_ab + alpha])) # 0 ~ t_ab + jitter
+        concatenate((t2, [t_ba + beta ])) # 0 ~ t_ba + jitter
         t2 = map(lambda x: x + t1[-1], t2) # 0 ~ t_ab+jitter, t_ab+jitter ~ (t_ab+t_ba+2*jitter)
         
         state_half = odeint(dut, init_cond,      t1, args=(t_start, p0, z0))
