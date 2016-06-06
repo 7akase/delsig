@@ -9,7 +9,7 @@ def f(t, y, arg1):
 def jac(t, y, arg1):
         return [[1j*arg1, 1], [0, -arg1*2*y[1]]]
 
-r = ode(f, jac).set_integrator('zvode', method='bdf', with_jacobian=True)
+r = ode(f).set_integrator('zvode', method='bdf', with_jacobian=False)
 r.set_initial_value(y0, t0).set_f_params(2.0).set_jac_params(2.0)
 
 t1 = 10
