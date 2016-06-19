@@ -1,4 +1,5 @@
 import Control.Applicative
+
 import Text.Printf
 
 import Numeric.GSL
@@ -8,7 +9,7 @@ import Graphics.Plot
 
 -- xdot t [x,v] = [v, -0.95*x-0.1*v]
 fs = 1e6
-ts = linspace 10 (0,1e-6)
+ts = linspace 100 (0,1e-6)
 
 timeStep ini = odeSolve xdot (eventAtAlpha ini) ts
 
@@ -41,22 +42,11 @@ xdot t [u , y , v ,  fb,  dac,  toV,  toFb,  toDac, start_time]
     sDac = (toDac - dac) / trf
     sY   = (-y + (u - dac) + (sU - sDac) / z0) * p0
 
-getUs :: [[Double]] -> [Double]
-getUs = fmap (!! 0) 
-
--- main = mplot (ts:toColumns (scanl timeStep [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0] ts))
 main = do
-  let fs = 1e6
-  let ts = take 500 [0..]
-  let ss = iterate (last . toLists . timeStep) (replicate 9 0)
-  -- putStrLn . unlines $ fmap (printf "%0.2f") $ getUs ss
-  putStrLn . show . sum $ getUs (take 8 ss)
-  -- let us  = log !! 0
-  -- let ys  = log !! 1
-  -- let vs =  log !! 2
-  -- putStrLn . show $ length ts
-  -- putStrLn . show $ length log 
-
+  let fs  = 1e6
+  let ts  = take 500 [0..]
+  let log = iterate (last . toLists . timeStep) (replicate 9 0)
+  putStrLn . unlines $ fmap ((printf "%0.2f") . (!! 0)) $ take 50 log
   --  mplot $ vector <$> ts : us : []
   -- mplot $ vector <$> ts : vs : [] 
   putStrLn "fin."
