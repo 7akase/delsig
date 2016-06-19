@@ -3,6 +3,7 @@ import Control.Applicative
 import Text.Printf
 
 import Numeric.GSL
+import Numeric.GSL.ODE
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import Graphics.Plot
@@ -42,11 +43,28 @@ xdot t [u , y , v ,  fb,  dac,  toV,  toFb,  toDac, start_time]
     sDac = (toDac - dac) / trf
     sY   = (-y + (u - dac) + (sU - sDac) / z0) * p0
 
+xdotV :: Double -> Vector Double -> Vector Double
+xdotV t vec = vector $ xdot t $ toList vec 
+
+sim xdotV ts = toLists $ odeSolveV RKf45 
+                                   init_step abstol reltol 
+                                   xdotV 
+                                   init_cond 
+                                   ts
+  where
+    init_step = 1e-9
+    abstol = 1e-3
+    reltol = 1e-6
+    init_cond = vector $ replicate 9 0
+
 main = do
   let fs  = 1e6
   let ts  = take 500 [0..]
-  let log = iterate (last . toLists . timeStep) (replicate 9 0)
-  putStrLn . unlines $ fmap ((printf "%0.2f") . (!! 0)) $ take 50 log
+  let n_fft = 2^14
+  let log = sim xdotV $ vector $ fmap (/ fs) [1..n_fft] 
+  putStrLn . unlines $ fmap ((printf "%0.2f") . (!! 0))  log
+  -- let log = iterate (last . toLists . timeStep) (replicate 9 0)
+  -- putStrLn . unlines $ fmap ((printf "%0.2f") . (!! 0)) $ take 50 log
   --  mplot $ vector <$> ts : us : []
   -- mplot $ vector <$> ts : vs : [] 
   putStrLn "fin."
