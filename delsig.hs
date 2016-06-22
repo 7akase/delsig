@@ -5,6 +5,8 @@ import Control.Applicative
 import Data.List
 import Data.Ix
 
+import Psd
+
 calculateSNR :: [Double] -> Int -> Int -> Double
 calculateSNR hwfft f nsig =
   dbv $ s / n
@@ -32,3 +34,5 @@ dbv x = 10 * log x / log 10
 
 dbp :: Double -> Double
 dbp x = 20 * log x / log 10
+
+  

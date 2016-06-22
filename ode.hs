@@ -1,5 +1,7 @@
 import Base
 import Psd
+import Delsig
+import Dsm1
 
 import Control.Applicative
 import Data.List
@@ -11,45 +13,7 @@ import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import Graphics.Plot
 
--- xdot t [x,v] = [v, -0.95*x-0.1*v]
-fs = 1e6
 n_init = 10 :: Int
-
-adc x | x >  0 = 1
-      | x <= 0 = -1
-
-eventAtAlpha [u, y, v, fb, dac, toV,  toFb,  toDac,  start_time]
-           = [u, y, v, fb, dac, toV', toFb', toDac', start_time']
-  where
-    toV'   = adc y
-    toFb'  = toV'
-    toDac' = step_dac * toFb'
-    step_dac = 1.0
-    start_time' = start_time + 1.0/fs
-
-dU f a t | t < n_init' / fs = 0
-         | otherwise  = a * w * cos (w * (t - n_init' / fs))
-  where
-    n_init' = fromIntegral n_init
-    w = 2 * pi * f
-
-xdot t [u , y , v ,  fb,  dac, toV, toFb, toDac, startTime]
-     = [sU, sY, sV, sFb, sDac,   0,    0,     0,         0]
-  where
-    trf = 1e-9
-    (osr, z0, p0, step_dac) = (256, 2*pi*fs, z0/100, 1.0)
-    fsig = fs / 2 / osr
-
-    sU   = dU fsig (0.7 * step_dac) (t + startTime)
-    sV   = (toV - v) / trf
-    sFb  = (toFb - fb) / trf
-    sDac = (toDac - dac) / trf
-    sY   = (-y + (u - dac)) * p0
-    -- sY   = (-y + (u - dac) + (sU - sDac) / z0) * p0
-
-
-xdotV :: Double -> Vector Double -> Vector Double
-xdotV t vec = vector $ xdot t $ toList vec 
 
 sim :: (Double -> Vector Double -> Vector Double) -> [Double] -> [Double]
 -- | simulate xdotV for single timeslot
@@ -66,13 +30,22 @@ sim xdotV init_cond =
       init_cond' = vector $ eventAtAlpha init_cond
       ts = vector [0, 1.0 / fs]
 
-getLog :: [[Double]]
-getLog = iterate (sim xdotV) (replicate 9 0)
+u' :: Double -> Double
+u' t | t < fromIntegral n_init / fs = 0.0
+     | otherwise = (0.7 * step_dac) * w * cos (w * (t - t_init))
+       where
+         w = 2 * pi * fsig
+         fsig = fs / 2 / fromIntegral osr
+         t_init = fromIntegral n_init / fs
 
+getLog :: [[Double]]
+getLog = iterate (sim (xdotV u')) (replicate 9 0)
+
+main :: IO ()
 main = do
   let fs  = 1e6
-  let n_fft = 2^14 :: Int
-  -- putStrLn . unlines . fmap showRecord . pick [8,0,1,2,3,4] $ take 128 getLog
+  let n_fft = 2^8 :: Int
+  let n_fft' = fromIntegral n_fft
   let log = getLog
   mplot . fmap vector . transpose $ 
     zipWith (:) (fmap fromIntegral [0 .. n_fft - 1])
@@ -81,3 +54,23 @@ main = do
   mplot $ vector <$> [fromIntegral <$> [0 .. n_fft `div` 2 - 1],
                       fmap db10 . psdAbs . fmap (!!3) . take n_fft . drop n_init $ log]
   putStrLn "fin."
+
+sample2 :: IO()
+sample2 = do
+  let n_fft = 2^12
+  let n_fft' = fromIntegral n_fft
+  let ys = psdAbs . fmap (!! 3) . 
+             take n_fft . drop n_init $ getLog
+  let freqs = (fs / n_fft' *) . fromIntegral <$> [0 .. n_fft `div` 2 - 1]
+  putStrLn . printf "%0.2f" . db10 $ calculateSNR ys (round (fromIntegral osr / 2)) 2 
+  mplot $ fmap vector [freqs, fmap db10 ys]
+
+sample1 :: IO ()
+sample1 = do
+  -- |
+  -- >>> sample1
+  -- 24.64
+  let n_fft = 2^14
+  let snr = db10 $ calculateSNR (psdAbs (fmap (sin . (2*pi/n_fft*16*)) [0..n_fft-1])) 16 2 
+  putStrLn $ printf "%0.2f" snr
+
