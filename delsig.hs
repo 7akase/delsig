@@ -4,8 +4,11 @@ import Control.Applicative
 
 import Data.List
 import Data.Ix
-
+import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Data
 import Psd
+
+type VecEle = Vector Double
 
 calculateSNR :: [Double] -> Int -> Int -> Double
 calculateSNR hwfft f nsig =
