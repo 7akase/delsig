@@ -71,15 +71,15 @@ snrSig = (\xs -> calculateSNR xs bin_sig 2) . take bin_bw . psdAbs $
          sin <$> (w_sig *) <$> fromIntegral <$> [0..n_fft-1]
 
 snrMod :: Double
-snrMod = (\xs -> calculateSNR xs bin_sig 2) . take bin_bw . psdAbs $
-         getLog !! 1 
+snrMod = (\xs -> calculateSNR xs bin_sig 2) . take bin_bw . psdAbs . 
+         zipWith (*) (hann n_fft) $ getLog !! 1 
 
 main :: IO ()
 main = do
   let attr = [Custom "logscale x" []]
   let log = getLog
   let freqs = (df *) . fromIntegral <$> [0 .. n_fft `div` 2 - 1]
-  let psd = fmap db10 . psdAbs $ log !! 1 
+  let psd = fmap db10 . psdAbs . zipWith (*) (hann n_fft) $ log !! 1 
   plotPath [] . fmap (\[a,b] -> (a,b)) . transpose $ choose [0,2] log
   plotPath attr $ zip freqs psd
  
