@@ -11,5 +11,8 @@ pick rows xss = fmap (pickRows rows) xss
   where
     pickRows rows xs = fmap (xs !!) rows
 
+choose :: [Int] -> [[a]] -> [[a]]
+choose cols xss = fmap (xss !!) cols
+
 showRecord :: [Double] -> String
 showRecord = concat . fmap (printf "%10.2e")

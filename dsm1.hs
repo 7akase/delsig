@@ -35,6 +35,13 @@ q :: Y -> V
 -- | quantizer
 q x | x >  0 = 1
     | x <= 0 = -1
+-- | quantizer
+-- >>> q (-0.1 :: Double)
+-- -1.0
+-- >>> q (0 :: Double)
+-- -1.0
+-- >>> q (1.2 :: Double)
+-- 1.0
 
 g :: V -> DAC
 -- | feedback-path filter and dac
@@ -44,9 +51,12 @@ g = id
 next :: (TIME -> U) -> DutVec -> DutVec
 next f ve_prev = [time, v, u, y, dac]
   where
-    [time', _, u', y', dac'] = ve_prev
-    u    = f time'
-    y    = u' - dac' + y'
-    v    = q y
-    dac  = g v
+    [time', v' , u', y', dac'] = ve_prev
+    u    = f time
+    y    = u - dac + y' -- no delay at LF
+    v    = q y  -- no delay at comparator
+    dac  = g v' -- z^-1 at DAC
     time = time' + 1.0/fs 
+
+-- | 
+-- >>> 
