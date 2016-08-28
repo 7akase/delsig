@@ -3,4 +3,5 @@
 
 !*.md
 !*.hs
-
+!*.cabal
+.stack-work/
